@@ -942,46 +942,35 @@ class TestComparisons(object):
 
     def test_greater(self):
         assert self.february > self.january1
+        assert self.february > self.january1.ordinal
 
     def test_greater_Raises_Value(self):
         with pytest.raises(period.IncompatibleFrequency):
             self.january1 > self.day
 
-    def test_greater_Raises_Type(self):
-        with pytest.raises(TypeError):
-            self.january1 > 1
-
     def test_greaterEqual(self):
         assert self.january1 >= self.january2
+        assert self.january1 >= self.january2.ordinal
 
     def test_greaterEqual_Raises_Value(self):
         with pytest.raises(period.IncompatibleFrequency):
             self.january1 >= self.day
 
-        with pytest.raises(TypeError):
-            print(self.january1 >= 1)
-
     def test_smallerEqual(self):
         assert self.january1 <= self.january2
+        assert self.january1 <= self.january2.ordinal
 
     def test_smallerEqual_Raises_Value(self):
         with pytest.raises(period.IncompatibleFrequency):
             self.january1 <= self.day
 
-    def test_smallerEqual_Raises_Type(self):
-        with pytest.raises(TypeError):
-            self.january1 <= 1
-
     def test_smaller(self):
         assert self.january1 < self.february
+        assert self.january1 < self.february.ordinal
 
     def test_smaller_Raises_Value(self):
         with pytest.raises(period.IncompatibleFrequency):
             self.january1 < self.day
-
-    def test_smaller_Raises_Type(self):
-        with pytest.raises(TypeError):
-            self.january1 < 1
 
     def test_sort(self):
         periods = [self.march, self.january1, self.february]
