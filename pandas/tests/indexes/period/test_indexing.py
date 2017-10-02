@@ -3,10 +3,11 @@ from datetime import datetime
 import pytest
 
 import numpy as np
+from numpy import testing as ntm
 import pandas as pd
 from pandas.util import testing as tm
 from pandas.compat import lrange
-from pandas._libs import tslib
+from pandas._libs import tslib, tslibs
 from pandas import (PeriodIndex, Series, DatetimeIndex,
                     period_range, Period)
 
@@ -340,3 +341,34 @@ class TestIndexing(object):
             pd.Period('2017-09-02')
         ])
         tm.assert_series_equal(result2, pd.Series([1, 2], index=expected_idx2))
+
+    def test_get_loc(self):
+        # GH 17717
+        p1 = pd.Period('2017-09-02')
+        p2 = pd.Period('2017-09-03')
+
+        idx1 = pd.PeriodIndex([p1, p1, p2])
+        expected_idx1_p1 = slice(0, 2)
+        expected_idx1_p2 = 2
+
+        assert idx1.get_loc(p1) == expected_idx1_p1
+        assert idx1.get_loc(str(p1)) == expected_idx1_p1
+        assert idx1.get_loc(p1.ordinal) == expected_idx1_p1
+        assert idx1.get_loc(p2) == expected_idx1_p2
+        assert idx1.get_loc(str(p2)) == expected_idx1_p2
+        assert idx1.get_loc(p2.ordinal) == expected_idx1_p2
+
+        pytest.raises(tslibs.parsing.DateParseError, idx1.get_loc, 'foo')
+        pytest.raises(KeyError, idx1.get_loc, 1.1)
+        pytest.raises(TypeError, idx1.get_loc, idx1)
+
+        idx2 = pd.PeriodIndex([p2, p1, p2])
+        expected_idx2_p1 = 1
+        expected_idx2_p2 = np.array([True, False, True])
+
+        assert idx2.get_loc(p1) == expected_idx2_p1
+        assert idx2.get_loc(str(p1)) == expected_idx2_p1
+        assert idx2.get_loc(p1.ordinal) == expected_idx2_p1
+        ntm.assert_array_equal(idx2.get_loc(p2), expected_idx2_p2)
+        ntm.assert_array_equal(idx2.get_loc(str(p2)), expected_idx2_p2)
+        ntm.assert_array_equal(idx2.get_loc(p2.ordinal), expected_idx2_p2)
