@@ -712,6 +712,8 @@ cdef class _Period(object):
             return PyObject_RichCompareBool(self.ordinal, other.ordinal, op)
         elif other is NaT:
             return _nat_scalar_rules[op]
+        elif util.is_integer_object(other):
+            return PyObject_RichCompareBool(self.ordinal, other, op)
         # index/series like
         elif hasattr(other, '_typ'):
             return NotImplemented
