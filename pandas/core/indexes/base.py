@@ -2270,9 +2270,10 @@ class Index(IndexOpsMixin, PandasObject):
         name = self.name if self.name == other.name else None
         return self.__class__(result, name=name)
 
-    def intersection(self, other):
+    def intersection(self, other, sort=False):
         """
         Form the intersection of two Index objects.
+        It's sorted if `sort=True` and sorting is possible.
 
         This returns a new Index with elements common to the index and `other`,
         preserving the order of the calling index.
@@ -2298,16 +2299,22 @@ class Index(IndexOpsMixin, PandasObject):
         other = _ensure_index(other)
 
         if self.equals(other):
-            return self._get_consensus_name(other)
+            result = self._get_consensus_name(other)
+
+            if sort:
+                result = result.sort_values()
+            return result
 
         if not is_dtype_equal(self.dtype, other.dtype):
             this = self.astype('O')
             other = other.astype('O')
-            return this.intersection(other)
+            return this.intersection(other, sort)
 
         if self.is_monotonic and other.is_monotonic:
             try:
                 result = self._inner_indexer(self._values, other._values)[0]
+                if sort:
+                    result = result.sort()
                 return self._wrap_union_result(other, result)
             except TypeError:
                 pass
@@ -2324,6 +2331,9 @@ class Index(IndexOpsMixin, PandasObject):
         taken = other.take(indexer)
         if self.name != other.name:
             taken.name = None
+
+        if sort:
+            taken = taken.sort_values()
         return taken
 
     def difference(self, other):
