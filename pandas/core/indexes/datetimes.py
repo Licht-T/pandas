@@ -1201,7 +1201,7 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
             raise ValueError('Passed item and index have different timezone')
         return self._simple_new(result, name=name, freq=None, tz=self.tz)
 
-    def intersection(self, other):
+    def intersection(self, other, sort=True):
         """
         Specialized intersection for DatetimeIndex objects. May be much faster
         than Index.intersection
@@ -1220,7 +1220,7 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
                 other = DatetimeIndex(other)
             except (TypeError, ValueError):
                 pass
-            result = Index.intersection(self, other)
+            result = Index.intersection(self, other, sort)
             if isinstance(result, DatetimeIndex):
                 if result.freq is None:
                     result.offset = to_offset(result.inferred_freq)
@@ -1230,7 +1230,7 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
               other.offset != self.offset or
               not other.offset.isAnchored() or
               (not self.is_monotonic or not other.is_monotonic)):
-            result = Index.intersection(self, other)
+            result = Index.intersection(self, other, sort)
             result = self._shallow_copy(result._values, name=result.name,
                                         tz=result.tz, freq=None)
             if result.freq is None:
@@ -1238,9 +1238,15 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
             return result
 
         if len(self) == 0:
-            return self
+            if sort:
+                return self.sort_values()
+            else:
+                return self
         if len(other) == 0:
-            return other
+            if sort:
+                return self.sort_values()
+            else:
+                return other
         # to make our life easier, "sort" the two ranges
         if self[0] <= other[0]:
             left, right = self, other
@@ -1255,7 +1261,13 @@ class DatetimeIndex(DatelikeOps, TimelikeOps, DatetimeIndexOpsMixin,
         else:
             lslice = slice(*left.slice_locs(start, end))
             left_chunk = left.values[lslice]
-            return self._shallow_copy(left_chunk)
+            result = self._shallow_copy(left_chunk)
+
+            if sort:
+                return result
+            else:
+                idx = result.get_indexer(self)
+                return result[idx[idx >= 0]]
 
     def _parsed_string_to_bounds(self, reso, parsed):
         """
