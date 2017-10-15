@@ -2605,7 +2605,7 @@ class MultiIndex(Index):
         return MultiIndex.from_arrays(lzip(*uniq_tuples), sortorder=0,
                                       names=result_names)
 
-    def intersection(self, other):
+    def intersection(self, other, sort=True):
         """
         Form the intersection of two MultiIndex objects, sorting if possible
 
@@ -2621,17 +2621,25 @@ class MultiIndex(Index):
         other, result_names = self._convert_can_do_setop(other)
 
         if self.equals(other):
-            return self
+            if sort:
+                return self.sort_values()
+            else:
+                return self
 
         self_tuples = self._values
         other_tuples = other._values
-        uniq_tuples = sorted(set(self_tuples) & set(other_tuples))
+        uniq_tuples = [x for x in self_tuples if x in other_tuples]
         if len(uniq_tuples) == 0:
             return MultiIndex(levels=[[]] * self.nlevels,
                               labels=[[]] * self.nlevels,
                               names=result_names, verify_integrity=False)
         else:
-            return MultiIndex.from_arrays(lzip(*uniq_tuples), sortorder=0,
+            sortorder = None
+            if sort:
+                sortorder = 0
+
+            return MultiIndex.from_arrays(lzip(*uniq_tuples),
+                                          sortorder=sortorder,
                                           names=result_names)
 
     def difference(self, other):
