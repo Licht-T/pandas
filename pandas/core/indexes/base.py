@@ -2385,15 +2385,16 @@ class Index(IndexOpsMixin, PandasObject):
 
         return this._shallow_copy(the_diff, name=result_name, freq=None)
 
-    def symmetric_difference(self, other, result_name=None):
+    def symmetric_difference(self, other, result_name=None, sort=True):
         """
         Compute the symmetric difference of two Index objects.
-        It's sorted if sorting is possible.
+        It's sorted if `sort=True` and sorting is possible.
 
         Parameters
         ----------
         other : Index or array-like
         result_name : str
+        sort : bool
 
         Returns
         -------
@@ -2438,10 +2439,12 @@ class Index(IndexOpsMixin, PandasObject):
         right_diff = other.values.take(right_indexer)
 
         the_diff = _concat._concat_compat([left_diff, right_diff])
-        try:
-            the_diff = sorting.safe_sort(the_diff)
-        except TypeError:
-            pass
+
+        if sort:
+            try:
+                the_diff = sorting.safe_sort(the_diff)
+            except TypeError:
+                pass
 
         attribs = self._get_attributes_dict()
         attribs['name'] = result_name
