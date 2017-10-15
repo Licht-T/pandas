@@ -333,7 +333,7 @@ class RangeIndex(Int64Index):
 
         return super(RangeIndex, self).equals(other)
 
-    def intersection(self, other):
+    def intersection(self, other, sort=True):
         """
         Form the intersection of two Index objects. Sortedness of the result is
         not guaranteed
@@ -382,7 +382,7 @@ class RangeIndex(Int64Index):
         # adjust index to limiting interval
         new_index._start = new_index._min_fitting_element(int_low)
 
-        if (self._step < 0 and other._step < 0) is not (new_index._step < 0):
+        if sort and self._step < 0 is not (new_index._step < 0):
             new_index = new_index[::-1]
         return new_index
 
