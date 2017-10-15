@@ -2336,13 +2336,13 @@ class Index(IndexOpsMixin, PandasObject):
             taken = taken.sort_values()
         return taken
 
-    def difference(self, other):
+    def difference(self, other, sort=True):
         """
         Return a new Index with elements from the index that are not in
         `other`.
 
         This is the set difference of two Index objects.
-        It's sorted if sorting is possible.
+        It's sorted if `sort=True` and sorting is possible.
 
         Parameters
         ----------
@@ -2376,10 +2376,12 @@ class Index(IndexOpsMixin, PandasObject):
         label_diff = np.setdiff1d(np.arange(this.size), indexer,
                                   assume_unique=True)
         the_diff = this.values.take(label_diff)
-        try:
-            the_diff = sorting.safe_sort(the_diff)
-        except TypeError:
-            pass
+
+        if sort:
+            try:
+                the_diff = sorting.safe_sort(the_diff)
+            except TypeError:
+                pass
 
         return this._shallow_copy(the_diff, name=result_name, freq=None)
 
