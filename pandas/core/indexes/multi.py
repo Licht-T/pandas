@@ -2642,7 +2642,7 @@ class MultiIndex(Index):
                                           sortorder=sortorder,
                                           names=result_names)
 
-    def difference(self, other):
+    def difference(self, other, sort=True):
         """
         Compute sorted set difference of two MultiIndex objects
 
@@ -2661,14 +2661,21 @@ class MultiIndex(Index):
                               labels=[[]] * self.nlevels,
                               names=result_names, verify_integrity=False)
 
-        difference = sorted(set(self._values) - set(other._values))
+        difference = [x for x in self._values if x not in other._values]
+
+        if sort:
+            difference = sorted(difference)
 
         if len(difference) == 0:
             return MultiIndex(levels=[[]] * self.nlevels,
                               labels=[[]] * self.nlevels,
                               names=result_names, verify_integrity=False)
         else:
-            return MultiIndex.from_tuples(difference, sortorder=0,
+            sortorder = None
+            if sort:
+                sortorder = 0
+
+            return MultiIndex.from_tuples(difference, sortorder=sortorder,
                                           names=result_names)
 
     @Appender(_index_shared_docs['astype'])
