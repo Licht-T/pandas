@@ -32,6 +32,7 @@ from pandas.core.dtypes.common import (
     is_bool_dtype,
     is_object_dtype,
     is_datetimelike_v_numeric,
+    is_datetimelike_v_object,
     is_float_dtype, is_numeric_dtype,
     is_numeric_v_string_like, is_extension_type,
     is_extension_array_dtype,
@@ -3750,8 +3751,25 @@ class BlockManager(PandasObject):
                 for b in rb:
                     if b.dtype == np.object_:
                         convert = i == src_len
-                        result = b.replace(s, d, inplace=inplace, regex=regex,
-                                           mgr=mgr, convert=convert)
+
+                        if not regex:
+                            # GH20656
+                            filter_data = (
+                                np.where(masks[i][b.mgr_locs.indexer])[0]
+                                + b.mgr_locs.indexer.start
+                            )
+                            result = b.replace(
+                                s, d, inplace=inplace, regex=regex,
+                                mgr=mgr, convert=convert, filter=filter_data
+                            )
+                        else:
+                            # TODO: This does not work well in case of cyclic
+                            # conditions, e.g. {'a': 'b', 'b': 'a'}. We need to
+                            # implement comp method for regex. (GH20656)
+                            result = b.replace(
+                                s, d, inplace=inplace, regex=regex,
+                                 mgr=mgr, convert=convert
+                            )
                         new_rb = _extend_blocks(result, new_rb)
                     else:
                         # get our mask for this element, sized to this
@@ -5149,6 +5167,11 @@ def _maybe_compare(a, b, op):
         result = False
 
     else:
+        if is_datetimelike_v_object(a, b):
+            try:
+                a = a.astype(type(b))
+            except TypeError:
+                pass
         result = op(a, b)
 
     if is_scalar(result) and (is_a_array or is_b_array):
