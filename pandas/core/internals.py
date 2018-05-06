@@ -32,6 +32,7 @@ from pandas.core.dtypes.common import (
     is_bool_dtype,
     is_object_dtype,
     is_datetimelike_v_numeric,
+    is_datetimelike_v_object,
     is_float_dtype, is_numeric_dtype,
     is_numeric_v_string_like, is_extension_type,
     is_extension_array_dtype,
@@ -3745,14 +3746,58 @@ class BlockManager(PandasObject):
             # its possible to get multiple result blocks here
             # replace ALWAYS will return a list
             rb = [blk if inplace else blk.copy()]
+            orig_rb = rb
+            rb_map = {}
             for i, (s, d) in enumerate(zip(src_list, dest_list)):
                 new_rb = []
-                for b in rb:
+                new_rb_map = {}
+                for i_b, b in enumerate(rb):
+                    before_len = len(new_rb)
+
                     if b.dtype == np.object_:
                         convert = i == src_len
-                        result = b.replace(s, d, inplace=inplace, regex=regex,
-                                           mgr=mgr, convert=convert)
+
+                        if not regex:
+                            print(masks)
+                            filter_data = (
+                                np.where(masks[i][b.mgr_locs.indexer])[0]
+                                + b.mgr_locs.indexer.start
+                            )
+                            result = b.replace(
+                                s, d, inplace=inplace, regex=regex,
+                                mgr=mgr, convert=convert, filter=filter_data
+                            )
+                        else:
+                            result = b.replace(s, d, inplace=inplace, regex=regex,
+                                               mgr=mgr, convert=convert)
+
                         new_rb = _extend_blocks(result, new_rb)
+
+                        if i_b in rb_map and regex:
+                            after_len = len(new_rb)
+                            for j in range(before_len, after_len):
+                                new_b_values = new_rb[j].get_values().ravel()
+
+                                i_orig_b, _, size = rb_map[i_b]
+                                orig_b_values = orig_rb[i_orig_b].get_values()
+
+                                diff = after_len - before_len
+                                i_part = j - before_len
+
+                                if max(diff, size) > 1:
+                                    # Original block is extracted.
+                                    # Get the part which corresponds to the result.
+                                    orig_b_values = orig_b_values[i_part].ravel()
+                                else:
+                                    orig_b_values = orig_b_values.ravel()
+
+                                if diff > 1:
+                                    b_values = b.get_values()[i_part].ravel()
+                                else:
+                                    b_values = b.get_values().ravel()
+
+                                cond = (orig_b_values != b_values)
+                                new_b_values[cond] = b_values[cond]
                     else:
                         # get our mask for this element, sized to this
                         # particular block
@@ -3762,6 +3807,18 @@ class BlockManager(PandasObject):
                             new_rb.extend(b.putmask(m, d, inplace=True))
                         else:
                             new_rb.append(b)
+
+                    if regex:
+                        after_len = len(new_rb)
+                        for j in range(before_len, after_len):
+                            diff = after_len - before_len
+                            if not rb_map:
+                                new_rb_map[j] = (i_b, before_len, diff)
+                            else:
+                                new_rb_map[j] = (rb_map[i_b][0], before_len, diff)
+
+                rb_map = new_rb_map
+
                 rb = new_rb
             result_blocks.extend(rb)
 
@@ -5149,6 +5206,11 @@ def _maybe_compare(a, b, op):
         result = False
 
     else:
+        if is_datetimelike_v_object(a, b):
+            try:
+                a = a.astype(type(b))
+            except TypeError:
+                pass
         result = op(a, b)
 
     if is_scalar(result) and (is_a_array or is_b_array):
